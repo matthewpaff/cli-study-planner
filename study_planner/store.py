@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
 
+from .validation import PlannerError, validate_title
+
 
 def now_iso():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -39,9 +41,12 @@ class TaskStore:
 
     def get(self, task_id):
         row = self.connection.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
-        return dict(row) if row else None
+        if row is None:
+            raise PlannerError("Task #{} does not exist".format(task_id))
+        return dict(row)
 
     def add(self, title):
+        title = validate_title(title)
         with self.connection:
             cursor = self.connection.execute(
                 "INSERT INTO tasks (title, created_at) VALUES (?, ?)", (title, now_iso()))

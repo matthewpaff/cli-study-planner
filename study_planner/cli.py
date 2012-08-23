@@ -6,6 +6,17 @@ import sys
 
 from . import __version__
 from .store import TaskStore
+from .validation import PlannerError
+
+
+def positive_id(value):
+    try:
+        number = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("Task ID must be a positive integer")
+    if number < 1:
+        raise argparse.ArgumentTypeError("Task ID must be a positive integer")
+    return number
 
 
 def build_parser():
@@ -17,6 +28,8 @@ def build_parser():
     add = commands.add_parser("add", help="Add a study task")
     add.add_argument("title")
     commands.add_parser("list", help="List tasks")
+    show = commands.add_parser("show", help="Show one task")
+    show.add_argument("id", type=positive_id)
     return parser
 
 
@@ -40,7 +53,12 @@ def main(argv=None):
                 print("Added task #{}: {}".format(task["id"], task["title"]))
             elif args.command == "list":
                 print_tasks(store.list_tasks())
+            elif args.command == "show":
+                print_tasks([store.get(args.id)])
         return 0
+    except PlannerError as error:
+        print("error: {}".format(error), file=sys.stderr)
+        return 2
     except (OSError, sqlite3.Error) as error:
         print("error: {}".format(error), file=sys.stderr)
         return 1
