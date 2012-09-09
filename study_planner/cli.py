@@ -6,7 +6,7 @@ import sys
 
 from . import __version__
 from .store import TaskStore
-from .validation import PlannerError
+from .validation import PlannerError, PRIORITIES
 
 
 def positive_id(value):
@@ -27,7 +27,9 @@ def build_parser():
     commands = parser.add_subparsers(dest="command", required=True)
     add = commands.add_parser("add", help="Add a study task")
     add.add_argument("title")
-    commands.add_parser("list", help="List tasks")
+    add.add_argument("--priority", choices=PRIORITIES, default="normal")
+    listing = commands.add_parser("list", help="List tasks")
+    listing.add_argument("--sort", choices=("priority", "created"), default="priority")
     show = commands.add_parser("show", help="Show one task")
     show.add_argument("id", type=positive_id)
     return parser
@@ -49,10 +51,10 @@ def main(argv=None):
     try:
         with TaskStore(args.db) as store:
             if args.command == "add":
-                task = store.add(args.title)
+                task = store.add(args.title, priority=args.priority)
                 print("Added task #{}: {}".format(task["id"], task["title"]))
             elif args.command == "list":
-                print_tasks(store.list_tasks())
+                print_tasks(store.list_tasks(sort=args.sort))
             elif args.command == "show":
                 print_tasks([store.get(args.id)])
         return 0
