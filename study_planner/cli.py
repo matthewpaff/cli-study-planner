@@ -28,8 +28,9 @@ def build_parser():
     add = commands.add_parser("add", help="Add a study task")
     add.add_argument("title")
     add.add_argument("--priority", choices=PRIORITIES, default="normal")
+    add.add_argument("--due", help="Due date in YYYY-MM-DD format")
     listing = commands.add_parser("list", help="List tasks")
-    listing.add_argument("--sort", choices=("priority", "created"), default="priority")
+    listing.add_argument("--sort", choices=("priority", "created", "due"), default="priority")
     show = commands.add_parser("show", help="Show one task")
     show.add_argument("id", type=positive_id)
     return parser
@@ -51,7 +52,7 @@ def main(argv=None):
     try:
         with TaskStore(args.db) as store:
             if args.command == "add":
-                task = store.add(args.title, priority=args.priority)
+                task = store.add(args.title, priority=args.priority, due_date=args.due)
                 print("Added task #{}: {}".format(task["id"], task["title"]))
             elif args.command == "list":
                 print_tasks(store.list_tasks(sort=args.sort))

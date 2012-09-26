@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
 
-from .validation import PlannerError, validate_priority, validate_title
+from .validation import PlannerError, validate_due, validate_priority, validate_title
 
 
 def now_iso():
@@ -45,18 +45,19 @@ class TaskStore:
             raise PlannerError("Task #{} does not exist".format(task_id))
         return dict(row)
 
-    def add(self, title, priority="normal"):
+    def add(self, title, priority="normal", due_date=None):
         title = validate_title(title)
         priority = validate_priority(priority)
+        due_date = validate_due(due_date)
         with self.connection:
             cursor = self.connection.execute(
-                "INSERT INTO tasks (title, priority, created_at) VALUES (?, ?, ?)",
-                (title, priority, now_iso()))
+                "INSERT INTO tasks (title, priority, due_date, created_at) VALUES (?, ?, ?, ?)",
+                (title, priority, due_date, now_iso()))
         return self.get(cursor.lastrowid)
 
     def list_tasks(self, sort="priority"):
         orders = {"priority": "CASE priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END, id",
-                  "created": "id"}
+                  "created": "id", "due": "due_date IS NULL, due_date, id"}
         if sort not in orders:
             raise PlannerError("Unknown sort order")
         sql = "SELECT * FROM tasks ORDER BY " + orders[sort]
