@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
 
-from .validation import PlannerError, validate_due, validate_priority, validate_title
+from .validation import PlannerError, validate_due, validate_priority, validate_status, validate_title
 
 
 def now_iso():
@@ -62,3 +62,14 @@ class TaskStore:
             raise PlannerError("Unknown sort order")
         sql = "SELECT * FROM tasks ORDER BY " + orders[sort]
         return [dict(row) for row in self.connection.execute(sql)]
+
+    def set_status(self, task_id, status):
+        status = validate_status(status)
+        task = self.get(task_id)
+        if task["status"] == status:
+            return task
+        with self.connection:
+            self.connection.execute(
+                "UPDATE tasks SET status = ?, completed_at = ? WHERE id = ?",
+                (status, now_iso() if status == "done" else None, task_id))
+        return self.get(task_id)

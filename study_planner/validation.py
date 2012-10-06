@@ -2,6 +2,7 @@
 from datetime import date
 
 PRIORITIES = ("low", "normal", "high")
+STATUSES = ("open", "done")
 
 
 class PlannerError(ValueError):
@@ -29,4 +30,10 @@ def validate_due(value):
             raise ValueError
     except (ValueError, TypeError):
         raise PlannerError("Due date must be a valid YYYY-MM-DD date")
+    return value
+
+
+def validate_status(value):
+    if value not in STATUSES:
+        raise PlannerError("Status must be open or done")
     return value

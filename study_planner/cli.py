@@ -33,6 +33,9 @@ def build_parser():
     listing.add_argument("--sort", choices=("priority", "created", "due"), default="priority")
     show = commands.add_parser("show", help="Show one task")
     show.add_argument("id", type=positive_id)
+    for name, help_text in (("done", "Complete a task"), ("reopen", "Reopen a completed task")):
+        command = commands.add_parser(name, help=help_text)
+        command.add_argument("id", type=positive_id)
     return parser
 
 
@@ -58,6 +61,9 @@ def main(argv=None):
                 print_tasks(store.list_tasks(sort=args.sort))
             elif args.command == "show":
                 print_tasks([store.get(args.id)])
+            elif args.command in ("done", "reopen"):
+                task = store.set_status(args.id, "done" if args.command == "done" else "open")
+                print("Task #{} marked {}.".format(task["id"], task["status"]))
         return 0
     except PlannerError as error:
         print("error: {}".format(error), file=sys.stderr)
