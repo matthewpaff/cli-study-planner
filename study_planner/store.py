@@ -73,3 +73,20 @@ class TaskStore:
                 "UPDATE tasks SET status = ?, completed_at = ? WHERE id = ?",
                 (status, now_iso() if status == "done" else None, task_id))
         return self.get(task_id)
+
+    def update(self, task_id, title=None, priority=None, due_date=None, clear_due=False):
+        task = self.get(task_id)
+        if clear_due and due_date is not None:
+            raise PlannerError("Choose either a due date or clear_due")
+        if title is None and priority is None and due_date is None and not clear_due:
+            raise PlannerError("Provide at least one task change")
+        new_title = validate_title(title) if title is not None else task["title"]
+        new_priority = validate_priority(priority) if priority is not None else task["priority"]
+        new_due = validate_due(due_date) if due_date is not None else task["due_date"]
+        if clear_due:
+            new_due = None
+        with self.connection:
+            self.connection.execute(
+                "UPDATE tasks SET title = ?, priority = ?, due_date = ? WHERE id = ?",
+                (new_title, new_priority, new_due, task_id))
+        return self.get(task_id)

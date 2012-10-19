@@ -36,6 +36,13 @@ def build_parser():
     for name, help_text in (("done", "Complete a task"), ("reopen", "Reopen a completed task")):
         command = commands.add_parser(name, help=help_text)
         command.add_argument("id", type=positive_id)
+    update = commands.add_parser("update", help="Edit task details")
+    update.add_argument("id", type=positive_id)
+    update.add_argument("--title")
+    update.add_argument("--priority", choices=PRIORITIES)
+    due = update.add_mutually_exclusive_group()
+    due.add_argument("--due")
+    due.add_argument("--clear-due", action="store_true")
     return parser
 
 
@@ -64,6 +71,9 @@ def main(argv=None):
             elif args.command in ("done", "reopen"):
                 task = store.set_status(args.id, "done" if args.command == "done" else "open")
                 print("Task #{} marked {}.".format(task["id"], task["status"]))
+            elif args.command == "update":
+                print_tasks([store.update(args.id, title=args.title, priority=args.priority,
+                                         due_date=args.due, clear_due=args.clear_due)])
         return 0
     except PlannerError as error:
         print("error: {}".format(error), file=sys.stderr)
