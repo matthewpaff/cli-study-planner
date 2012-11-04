@@ -31,6 +31,7 @@ def build_parser():
     add.add_argument("--due", help="Due date in YYYY-MM-DD format")
     listing = commands.add_parser("list", help="List tasks")
     listing.add_argument("--sort", choices=("priority", "created", "due"), default="priority")
+    listing.add_argument("--search", help="Find a literal substring (ASCII case-insensitive)")
     show = commands.add_parser("show", help="Show one task")
     show.add_argument("id", type=positive_id)
     for name, help_text in (("done", "Complete a task"), ("reopen", "Reopen a completed task")):
@@ -65,7 +66,7 @@ def main(argv=None):
                 task = store.add(args.title, priority=args.priority, due_date=args.due)
                 print("Added task #{}: {}".format(task["id"], task["title"]))
             elif args.command == "list":
-                print_tasks(store.list_tasks(sort=args.sort))
+                print_tasks(store.list_tasks(sort=args.sort, search=args.search))
             elif args.command == "show":
                 print_tasks([store.get(args.id)])
             elif args.command in ("done", "reopen"):

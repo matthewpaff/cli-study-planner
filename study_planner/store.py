@@ -55,13 +55,18 @@ class TaskStore:
                 (title, priority, due_date, now_iso()))
         return self.get(cursor.lastrowid)
 
-    def list_tasks(self, sort="priority"):
+    def list_tasks(self, sort="priority", search=None):
         orders = {"priority": "CASE priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END, id",
                   "created": "id", "due": "due_date IS NULL, due_date, id"}
         if sort not in orders:
             raise PlannerError("Unknown sort order")
-        sql = "SELECT * FROM tasks ORDER BY " + orders[sort]
-        return [dict(row) for row in self.connection.execute(sql)]
+        sql = "SELECT * FROM tasks"
+        values = []
+        if search:
+            sql += " WHERE instr(lower(title), lower(?)) > 0"
+            values.append(search)
+        sql += " ORDER BY " + orders[sort]
+        return [dict(row) for row in self.connection.execute(sql, values)]
 
     def set_status(self, task_id, status):
         status = validate_status(status)
