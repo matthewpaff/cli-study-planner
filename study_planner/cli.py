@@ -32,6 +32,9 @@ def build_parser():
     listing = commands.add_parser("list", help="List tasks")
     listing.add_argument("--sort", choices=("priority", "created", "due"), default="priority")
     listing.add_argument("--search", help="Find a literal substring (ASCII case-insensitive)")
+    listing.add_argument("--status", choices=("open", "done", "all"), default="open")
+    listing.add_argument("--due-before", help="Due strictly before YYYY-MM-DD")
+    listing.add_argument("--overdue", action="store_true", help="Only open tasks due before today")
     show = commands.add_parser("show", help="Show one task")
     show.add_argument("id", type=positive_id)
     for name, help_text in (("done", "Complete a task"), ("reopen", "Reopen a completed task")):
@@ -66,7 +69,8 @@ def main(argv=None):
                 task = store.add(args.title, priority=args.priority, due_date=args.due)
                 print("Added task #{}: {}".format(task["id"], task["title"]))
             elif args.command == "list":
-                print_tasks(store.list_tasks(sort=args.sort, search=args.search))
+                print_tasks(store.list_tasks(sort=args.sort, search=args.search, status=args.status,
+                                             due_before=args.due_before, overdue=args.overdue))
             elif args.command == "show":
                 print_tasks([store.get(args.id)])
             elif args.command in ("done", "reopen"):

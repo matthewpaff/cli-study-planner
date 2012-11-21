@@ -1,5 +1,5 @@
 """SQLite persistence for study tasks."""
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 import sqlite3
 
@@ -8,6 +8,10 @@ from .validation import PlannerError, validate_due, validate_priority, validate_
 
 def now_iso():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def today_iso():
+    return date.today().isoformat()
 
 
 class TaskStore:
@@ -55,16 +59,27 @@ class TaskStore:
                 (title, priority, due_date, now_iso()))
         return self.get(cursor.lastrowid)
 
-    def list_tasks(self, sort="priority", search=None):
+    def list_tasks(self, sort="priority", search=None, status="open", due_before=None, overdue=False):
         orders = {"priority": "CASE priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END, id",
                   "created": "id", "due": "due_date IS NULL, due_date, id"}
         if sort not in orders:
             raise PlannerError("Unknown sort order")
         sql = "SELECT * FROM tasks"
-        values = []
+        clauses, values = [], []
+        if status != "all":
+            clauses.append("status = ?")
+            values.append(validate_status(status))
+        if due_before is not None:
+            clauses.append("due_date < ?")
+            values.append(validate_due(due_before))
+        if overdue:
+            clauses.extend(["status = 'open'", "due_date < ?"])
+            values.append(today_iso())
         if search:
-            sql += " WHERE instr(lower(title), lower(?)) > 0"
+            clauses.append("instr(lower(title), lower(?)) > 0")
             values.append(search)
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
         sql += " ORDER BY " + orders[sort]
         return [dict(row) for row in self.connection.execute(sql, values)]
 
