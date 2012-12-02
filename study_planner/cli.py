@@ -47,6 +47,7 @@ def build_parser():
     due = update.add_mutually_exclusive_group()
     due.add_argument("--due")
     due.add_argument("--clear-due", action="store_true")
+    commands.add_parser("summary", help="Summarize task progress")
     return parser
 
 
@@ -79,6 +80,12 @@ def main(argv=None):
             elif args.command == "update":
                 print_tasks([store.update(args.id, title=args.title, priority=args.priority,
                                          due_date=args.due, clear_due=args.clear_due)])
+            elif args.command == "summary":
+                counts = store.summary()
+                for key in ("total", "open", "done", "overdue"):
+                    print("{}: {}".format(key.capitalize(), counts[key]))
+                print("Open by priority: " + ", ".join(
+                    "{}={}".format(key, value) for key, value in counts["open_by_priority"].items()))
         return 0
     except PlannerError as error:
         print("error: {}".format(error), file=sys.stderr)

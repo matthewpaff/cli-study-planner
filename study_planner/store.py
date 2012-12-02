@@ -110,3 +110,18 @@ class TaskStore:
                 "UPDATE tasks SET title = ?, priority = ?, due_date = ? WHERE id = ?",
                 (new_title, new_priority, new_due, task_id))
         return self.get(task_id)
+
+    def summary(self):
+        counts = dict(self.connection.execute("""
+            SELECT COUNT(*) AS total,
+                   COALESCE(SUM(status = 'open'), 0) AS open,
+                   COALESCE(SUM(status = 'done'), 0) AS done,
+                   COALESCE(SUM(status = 'open' AND due_date < ?), 0) AS overdue
+            FROM tasks
+        """, (today_iso(),)).fetchone())
+        priorities = {"high": 0, "normal": 0, "low": 0}
+        for row in self.connection.execute(
+                "SELECT priority, COUNT(*) AS count FROM tasks WHERE status = 'open' GROUP BY priority"):
+            priorities[row["priority"]] = row["count"]
+        counts["open_by_priority"] = priorities
+        return counts
