@@ -1,10 +1,12 @@
 """Command-line entry point."""
 import argparse
+from contextlib import nullcontext
 from pathlib import Path
 import sqlite3
 import sys
 
 from . import __version__
+from .csvio import write_csv
 from .store import TaskStore
 from .validation import PlannerError, PRIORITIES
 
@@ -48,6 +50,8 @@ def build_parser():
     due.add_argument("--due")
     due.add_argument("--clear-due", action="store_true")
     commands.add_parser("summary", help="Summarize task progress")
+    export = commands.add_parser("export", help="Export all tasks to CSV")
+    export.add_argument("path", nargs="?", default="-", help="Output file, or - for stdout")
     return parser
 
 
@@ -86,6 +90,13 @@ def main(argv=None):
                     print("{}: {}".format(key.capitalize(), counts[key]))
                 print("Open by priority: " + ", ".join(
                     "{}={}".format(key, value) for key, value in counts["open_by_priority"].items()))
+            elif args.command == "export":
+                target = nullcontext(sys.stdout) if args.path == "-" else open(
+                    args.path, "w", encoding="utf-8", newline="")
+                with target as handle:
+                    count = write_csv(store, handle)
+                if args.path != "-":
+                    print("Exported {} tasks.".format(count))
         return 0
     except PlannerError as error:
         print("error: {}".format(error), file=sys.stderr)
