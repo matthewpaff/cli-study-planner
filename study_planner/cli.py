@@ -6,7 +6,7 @@ import sqlite3
 import sys
 
 from . import __version__
-from .csvio import write_csv
+from .csvio import read_csv, write_csv
 from .store import TaskStore
 from .validation import PlannerError, PRIORITIES
 
@@ -52,6 +52,8 @@ def build_parser():
     commands.add_parser("summary", help="Summarize task progress")
     export = commands.add_parser("export", help="Export all tasks to CSV")
     export.add_argument("path", nargs="?", default="-", help="Output file, or - for stdout")
+    importing = commands.add_parser("import", help="Import CSV rows as new tasks")
+    importing.add_argument("path", help="Input file, or - for stdin")
     return parser
 
 
@@ -97,10 +99,16 @@ def main(argv=None):
                     count = write_csv(store, handle)
                 if args.path != "-":
                     print("Exported {} tasks.".format(count))
+            elif args.command == "import":
+                source = nullcontext(sys.stdin) if args.path == "-" else open(
+                    args.path, "r", encoding="utf-8-sig", newline="")
+                with source as handle:
+                    count = read_csv(store, handle)
+                print("Imported {} tasks.".format(count))
         return 0
     except PlannerError as error:
         print("error: {}".format(error), file=sys.stderr)
         return 2
-    except (OSError, sqlite3.Error) as error:
+    except (OSError, sqlite3.Error, UnicodeError) as error:
         print("error: {}".format(error), file=sys.stderr)
         return 1

@@ -125,3 +125,24 @@ class TaskStore:
             priorities[row["priority"]] = row["count"]
         counts["open_by_priority"] = priorities
         return counts
+
+    def import_tasks(self, records):
+        """Validate every record before inserting the batch atomically."""
+        pending = []
+        timestamp = now_iso()
+        for number, record in enumerate(records, start=2):
+            try:
+                title = validate_title(record["title"])
+                priority = validate_priority(record["priority"])
+                due = validate_due(record["due_date"] or None)
+                status = validate_status(record["status"])
+            except (PlannerError, KeyError, TypeError) as error:
+                raise PlannerError("CSV row {}: {}".format(number, error))
+            pending.append((title, priority, due, status, timestamp,
+                            timestamp if status == "done" else None))
+        with self.connection:
+            self.connection.executemany("""
+                INSERT INTO tasks (title, priority, due_date, status, created_at, completed_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, pending)
+        return len(pending)
