@@ -39,7 +39,8 @@ def build_parser():
     listing.add_argument("--overdue", action="store_true", help="Only open tasks due before today")
     show = commands.add_parser("show", help="Show one task")
     show.add_argument("id", type=positive_id)
-    for name, help_text in (("done", "Complete a task"), ("reopen", "Reopen a completed task")):
+    for name, help_text in (("done", "Complete a task"), ("reopen", "Reopen a completed task"),
+                            ("delete", "Permanently delete one task")):
         command = commands.add_parser(name, help=help_text)
         command.add_argument("id", type=positive_id)
     update = commands.add_parser("update", help="Edit task details")
@@ -105,6 +106,9 @@ def main(argv=None):
                 with source as handle:
                     count = read_csv(store, handle)
                 print("Imported {} tasks.".format(count))
+            elif args.command == "delete":
+                task = store.delete(args.id)
+                print("Deleted task #{}.".format(task["id"]))
         return 0
     except PlannerError as error:
         print("error: {}".format(error), file=sys.stderr)

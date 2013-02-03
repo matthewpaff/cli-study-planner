@@ -146,3 +146,9 @@ class TaskStore:
                 VALUES (?, ?, ?, ?, ?, ?)
             """, pending)
         return len(pending)
+
+    def delete(self, task_id):
+        task = self.get(task_id)
+        with self.connection:
+            self.connection.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+        return task
