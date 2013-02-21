@@ -1,6 +1,7 @@
 """Command-line entry point."""
 import argparse
 from contextlib import nullcontext
+import json
 from pathlib import Path
 import sqlite3
 import sys
@@ -37,8 +38,10 @@ def build_parser():
     listing.add_argument("--status", choices=("open", "done", "all"), default="open")
     listing.add_argument("--due-before", help="Due strictly before YYYY-MM-DD")
     listing.add_argument("--overdue", action="store_true", help="Only open tasks due before today")
+    listing.add_argument("--json", action="store_true", help="Write JSON for scripts")
     show = commands.add_parser("show", help="Show one task")
     show.add_argument("id", type=positive_id)
+    show.add_argument("--json", action="store_true")
     for name, help_text in (("done", "Complete a task"), ("reopen", "Reopen a completed task"),
                             ("delete", "Permanently delete one task")):
         command = commands.add_parser(name, help=help_text)
@@ -50,7 +53,8 @@ def build_parser():
     due = update.add_mutually_exclusive_group()
     due.add_argument("--due")
     due.add_argument("--clear-due", action="store_true")
-    commands.add_parser("summary", help="Summarize task progress")
+    summary = commands.add_parser("summary", help="Summarize task progress")
+    summary.add_argument("--json", action="store_true")
     export = commands.add_parser("export", help="Export all tasks to CSV")
     export.add_argument("path", nargs="?", default="-", help="Output file, or - for stdout")
     importing = commands.add_parser("import", help="Import CSV rows as new tasks")
@@ -58,7 +62,14 @@ def build_parser():
     return parser
 
 
-def print_tasks(tasks):
+def print_json(value):
+    print(json.dumps(value, ensure_ascii=True, indent=2))
+
+
+def print_tasks(tasks, as_json=False):
+    if as_json:
+        print_json(tasks)
+        return
     if not tasks:
         print("No tasks found.")
         return
@@ -78,9 +89,13 @@ def main(argv=None):
                 print("Added task #{}: {}".format(task["id"], task["title"]))
             elif args.command == "list":
                 print_tasks(store.list_tasks(sort=args.sort, search=args.search, status=args.status,
-                                             due_before=args.due_before, overdue=args.overdue))
+                                             due_before=args.due_before, overdue=args.overdue), as_json=args.json)
             elif args.command == "show":
-                print_tasks([store.get(args.id)])
+                task = store.get(args.id)
+                if args.json:
+                    print_json(task)
+                else:
+                    print_tasks([task])
             elif args.command in ("done", "reopen"):
                 task = store.set_status(args.id, "done" if args.command == "done" else "open")
                 print("Task #{} marked {}.".format(task["id"], task["status"]))
@@ -89,10 +104,13 @@ def main(argv=None):
                                          due_date=args.due, clear_due=args.clear_due)])
             elif args.command == "summary":
                 counts = store.summary()
-                for key in ("total", "open", "done", "overdue"):
-                    print("{}: {}".format(key.capitalize(), counts[key]))
-                print("Open by priority: " + ", ".join(
-                    "{}={}".format(key, value) for key, value in counts["open_by_priority"].items()))
+                if args.json:
+                    print_json(counts)
+                else:
+                    for key in ("total", "open", "done", "overdue"):
+                        print("{}: {}".format(key.capitalize(), counts[key]))
+                    print("Open by priority: " + ", ".join(
+                        "{}={}".format(key, value) for key, value in counts["open_by_priority"].items()))
             elif args.command == "export":
                 target = nullcontext(sys.stdout) if args.path == "-" else open(
                     args.path, "w", encoding="utf-8", newline="")
