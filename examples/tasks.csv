@@ -1,0 +1,4 @@
+title,priority,due_date,status
+Review Python iterators,normal,2026-12-01,open
+Practice SQLite pagination,high,,open
+Read the CLI help,low,,done
