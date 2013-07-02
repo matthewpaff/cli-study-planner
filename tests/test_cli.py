@@ -45,6 +45,18 @@ class CLITests(unittest.TestCase):
         self.assertEqual(self.run_cli("reopen", "1").returncode, 0)
         self.assertEqual(len(json.loads(self.run_cli("list", "--json").stdout)), 1)
 
+    def test_focus_excludes_completed_tasks_and_respects_limit_and_priority(self):
+        self.run_cli("add", "Low priority", "--priority", "low")
+        self.run_cli("add", "Completed", "--priority", "high")
+        self.run_cli("add", "Important", "--priority", "high")
+        self.run_cli("add", "Normal")
+        self.run_cli("done", "2")
+        result = self.run_cli("focus", "--limit", "2", "--json")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([task["title"] for task in json.loads(result.stdout)], ["Important", "Normal"])
+        for limit in ("0", "21", "no"):
+            self.assertEqual(self.run_cli("focus", "--limit", limit).returncode, 2)
+
     def test_unicode_and_control_characters_render_cleanly(self):
         title = "Study caf\u00e9 \u65e5\u672c\u8a9e\nnotes"
         added = self.run_cli("add", title)

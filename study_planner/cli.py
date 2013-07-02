@@ -22,6 +22,13 @@ def positive_id(value):
     return number
 
 
+def focus_limit(value):
+    number = positive_id(value)
+    if number > 20:
+        raise argparse.ArgumentTypeError("Focus limit must be between 1 and 20")
+    return number
+
+
 def build_parser():
     parser = argparse.ArgumentParser(description="Plan and track study tasks.")
     parser.add_argument("--version", action="version", version=__version__)
@@ -39,6 +46,9 @@ def build_parser():
     listing.add_argument("--due-before", help="Due strictly before YYYY-MM-DD")
     listing.add_argument("--overdue", action="store_true", help="Only open tasks due before today")
     listing.add_argument("--json", action="store_true", help="Write JSON for scripts")
+    focus = commands.add_parser("focus", help="Show a short list of open tasks in priority order")
+    focus.add_argument("--limit", type=focus_limit, default=3, help="Number of tasks, 1-20 (default: 3)")
+    focus.add_argument("--json", action="store_true")
     show = commands.add_parser("show", help="Show one task")
     show.add_argument("id", type=positive_id)
     show.add_argument("--json", action="store_true")
@@ -90,6 +100,8 @@ def main(argv=None):
             elif args.command == "list":
                 print_tasks(store.list_tasks(sort=args.sort, search=args.search, status=args.status,
                                              due_before=args.due_before, overdue=args.overdue), as_json=args.json)
+            elif args.command == "focus":
+                print_tasks(store.list_tasks(status="open", sort="priority")[:args.limit], as_json=args.json)
             elif args.command == "show":
                 task = store.get(args.id)
                 if args.json:
